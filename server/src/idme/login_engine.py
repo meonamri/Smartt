@@ -29,10 +29,11 @@ Simplified:
 
 import logging
 import asyncio
+import re
 from typing import Dict, List, Optional, Any
 from datetime import datetime, date
 from pathlib import Path
-from urllib.parse import unquote_plus
+from urllib.parse import unquote_plus, urlparse
 from playwright.async_api import (
     async_playwright,
     Browser,
@@ -56,6 +57,47 @@ class LoginFailedError(LoginEngineError):
 class NavigationError(LoginEngineError):
     """Raised when portal navigation fails."""
     pass
+
+
+class MOEISUnavailableError(NavigationError):
+    """Raised when a MOEIS page load comes back as an HTTP error (e.g. the
+    Imperva 503 "Connection Failed, Error 20" page when Imperva cannot reach
+    the MOEIS origin). Fails the login straight away instead of waiting ~35s
+    for a student table that can never appear. The message keeps the
+    "returned HTTP <code>" wording: 5xx stays transient for the retry
+    classifier, 4xx (e.g. a geo-block 403) does not."""
+    pass
+
+
+_IMPERVA_EDET = re.compile(r"edet=(\d+)")
+_IMPERVA_INCIDENT = re.compile(r"incident_id=([0-9-]+)")
+
+
+async def moeis_http_error(response, what: str) -> Optional[str]:
+    """Return a 'MOEIS unavailable' message if ``response`` is an HTTP error
+    (status >= 400), else None. ``response`` may be None (goto raised or
+    committed without a response) — that is not treated as an error here."""
+    if response is None or response.status < 400:
+        return None
+    host = urlparse(response.url).hostname or response.url
+    detail = ""
+    try:
+        body = await response.text()
+    except Exception:
+        body = ""
+    if "_Incapsula_Resource" in body:
+        edet = _IMPERVA_EDET.search(body)
+        incident = _IMPERVA_INCIDENT.search(body)
+        detail = " (Imperva"
+        if edet:
+            detail += f" error {edet.group(1)}"
+            if edet.group(1) == "20":
+                detail += ": Imperva could not connect to the MOEIS server"
+        if incident:
+            detail += f", incident {incident.group(1)}"
+        detail += ")"
+    return (f"MOEIS unavailable: {host} returned HTTP {response.status} "
+            f"on {what}{detail}")
 
 
 class AlreadyConfirmedError(LoginEngineError):
@@ -387,10 +429,20 @@ class IDMELoginEngine:
         # only need it to commit. We then open the attendance page on a FRESH
         # page in the same context — navigating away from the stuck home
         # document directly raises NS_ERROR_FAILURE.
+        sso_response = None
         try:
-            await self.page.goto(href, wait_until='domcontentloaded', timeout=30000)
+            sso_response = await self.page.goto(
+                href, wait_until='domcontentloaded', timeout=30000)
         except PlaywrightError as e:
             self.logger.warning(f"SSO landing reported {e}; continuing on fresh page")
+        # A 5xx here is the gateway (Imperva) failing to reach MOEIS. Its
+        # error page is served on the moeispel URL, so the 'moeispel' check
+        # below would pass and we'd wait ~35s more for a table that can never
+        # load (2026-11-10: every class failed that way). Fail fast with the
+        # real cause. 4xx is left to the attendance-page check below.
+        if sso_response is not None and sso_response.status >= 500:
+            raise MOEISUnavailableError(
+                await moeis_http_error(sso_response, "the SSO hop"))
         await self.page.wait_for_timeout(2000)
         self.logger.info(f"On MOEIS: {self.page.url}")
 
@@ -411,9 +463,15 @@ class IDMELoginEngine:
 
         # Fresh page in the same context (shares the auth cookies set above).
         attendance_page = await self.context.new_page()
-        await attendance_page.goto(
+        attendance_response = await attendance_page.goto(
             self.ATTENDANCE_URL, wait_until='domcontentloaded', timeout=30000
         )
+        # Without the attendance document there is no form, so any HTTP error
+        # here is final for this login — don't wait 20s for input.case-hadir.
+        error = await moeis_http_error(attendance_response, "the attendance page")
+        if error:
+            await attendance_page.close()
+            raise MOEISUnavailableError(error)
 
         # The portal hardcodes http:// AJAX URLs. With HTTPS-Only mode each one
         # takes a cross-scheme 307 to https, and the browser strips the

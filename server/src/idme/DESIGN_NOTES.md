@@ -60,6 +60,20 @@ The student rows load via AJAX on the class `<select>`'s `change` event, which
 does **not** fire for the already-pre-selected class. We trigger it explicitly,
 otherwise the table is empty.
 
+### 7. Fail fast when a MOEIS page load returns an HTTP error
+STEP 4 checks the status `goto()` returns for the SSO hop (5xx → fail) and the
+attendance page (any 4xx/5xx → fail) and raises `MOEISUnavailableError`
+("MOEIS unavailable: <host> returned HTTP <code> on <step> (Imperva error N,
+incident …)"). Why: when Imperva cannot reach the MOEIS origin it serves its own
+503 "Connection Failed, Error 20" page **on the moeispel URL**, so the
+`'moeispel' in url` check passes and the old code waited ~35 s more, then failed
+with a misleading `Timeout … input.case-hadir` (2026-11-10: every class, all
+day). 5xx stays transient for the retry classifier (`returned HTTP 5\d\d`); 4xx
+(e.g. a geo-block 403) is not retried. A 4xx on the SSO hop alone is left to the
+attendance-page check, and a `goto()` that raises or returns `None` is still
+tolerated (§4). Don't drop these checks to "simplify" — they are what makes a
+portal outage show up as an outage.
+
 ---
 
 ## `form_filler.py`
