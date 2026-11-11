@@ -19,6 +19,23 @@ from src.config import Config
 from src.service_manager import ServiceManager
 
 
+class PrivateRotatingFileHandler(RotatingFileHandler):
+    """RotatingFileHandler whose files are owner-only (0600).
+
+    The log records teacher logins and attendance activity. Rotation opens a
+    fresh file with the process umask (world-readable by default), so set the
+    mode every time a file is opened, not just once at startup.
+    """
+
+    def _open(self):
+        stream = super()._open()
+        try:
+            os.chmod(self.baseFilename, 0o600)
+        except OSError:
+            pass
+        return stream
+
+
 def setup_logging(log_level: str = None, log_file: str = None):
     """
     Setup logging configuration
@@ -42,7 +59,7 @@ def setup_logging(log_level: str = None, log_file: str = None):
 
     # File handler with rotation
     try:
-        file_handler = RotatingFileHandler(
+        file_handler = PrivateRotatingFileHandler(
             log_file,
             maxBytes=Config.LOG_MAX_BYTES,
             backupCount=Config.LOG_BACKUP_COUNT

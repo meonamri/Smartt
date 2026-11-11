@@ -110,7 +110,7 @@ class TeacherManager:
         ic_clean = ic_number.strip().replace('-', '')
         if not ic_clean.isdigit() or len(ic_clean) != 12:
             raise TeacherManagerError(
-                f"Invalid IC number: must be exactly 12 digits, got '{ic_number}'"
+                f"Invalid IC number: must be exactly 12 digits, got {len(ic_clean)} characters"
             )
 
         # Encrypt password
@@ -172,7 +172,8 @@ class TeacherManager:
         if ic_number is not None:
             ic_clean = ic_number.strip().replace('-', '')
             if not ic_clean.isdigit() or len(ic_clean) != 12:
-                raise TeacherManagerError(f"Invalid IC number: {ic_number}")
+                raise TeacherManagerError(
+                    f"Invalid IC number: must be exactly 12 digits, got {len(ic_clean)} characters")
             updates.append("ic_number = ?")
             params.append(ic_clean)
 

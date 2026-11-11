@@ -73,6 +73,35 @@ _IMPERVA_EDET = re.compile(r"edet=(\d+)")
 _IMPERVA_INCIDENT = re.compile(r"incident_id=([0-9-]+)")
 
 
+def redact_url(url) -> str:
+    """URL safe for logs: scheme, host and path only.
+
+    IDME's SSO hop carries the session in the query string (token_idms=...), so
+    a logged URL is a logged credential. Drop query and fragment entirely and
+    mark that something was removed.
+    """
+    if not url:
+        return str(url)
+    text = str(url)
+    try:
+        parts = urlparse(text)
+    except Exception:
+        return "<url redacted>"
+    if not parts.scheme or not parts.netloc:
+        base = text.split("?", 1)[0].split("#", 1)[0]
+    else:
+        base = f"{parts.scheme}://{parts.hostname or ''}{parts.path}"
+    return base + ("?<redacted>" if (parts.query or parts.fragment) else "")
+
+
+def mask_ic(ic) -> str:
+    """Teacher IC number for logs: last 4 digits only."""
+    digits = str(ic or "").strip()
+    if len(digits) <= 4:
+        return "****"
+    return "*" * (len(digits) - 4) + digits[-4:]
+
+
 async def moeis_http_error(response, what: str) -> Optional[str]:
     """Return a 'MOEIS unavailable' message if ``response`` is an HTTP error
     (status >= 400), else None. ``response`` may be None (goto raised or
@@ -348,7 +377,7 @@ class IDMELoginEngine:
             await self.page.wait_for_timeout(2000)
             url = self.page.url
             if 'home' in url or ('login' not in url.lower() and 'verification' not in url.lower()):
-                self.logger.info(f"Login successful: {url}")
+                self.logger.info(f"Login successful: {redact_url(url)}")
                 break
             try:
                 await self._check_login_errors(f"attempt_{attempt}")
@@ -421,7 +450,7 @@ class IDMELoginEngine:
             self.logger.warning("Pengurusan Murid has no valid URL")
             return
 
-        self.logger.info(f"SSO URL: {href[:80]}...")
+        self.logger.info(f"SSO URL: {redact_url(href)}")
 
         # SSO hop: this establishes the MOEIS session cookie in the browser
         # context. The moeispel home page never reaches a settled load state
@@ -444,7 +473,7 @@ class IDMELoginEngine:
             raise MOEISUnavailableError(
                 await moeis_http_error(sso_response, "the SSO hop"))
         await self.page.wait_for_timeout(2000)
-        self.logger.info(f"On MOEIS: {self.page.url}")
+        self.logger.info(f"On MOEIS: {redact_url(self.page.url)}")
 
         if 'moeispel' not in self.page.url:
             # The SSO redirect sometimes lands back on the IDME app picker
@@ -457,7 +486,7 @@ class IDMELoginEngine:
             # NonSchoolDayError — that is school-wide and would skip every
             # remaining class; an SSO bounce is local to this login.
             raise LoginEngineError(
-                f"Not on MOEIS after SSO (landed on {self.page.url}); "
+                f"Not on MOEIS after SSO (landed on {redact_url(self.page.url)}); "
                 "cannot open attendance page"
             )
 
@@ -546,7 +575,7 @@ class IDMELoginEngine:
             await old_page.close()
         except Exception:
             pass
-        self.logger.info(f"On attendance page: {self.page.url}")
+        self.logger.info(f"On attendance page: {redact_url(self.page.url)}")
 
     async def _select_target_date(self, page: Page):
         """Switch the attendance form to self.target_date and verify it took.
@@ -685,7 +714,7 @@ class IDMELoginEngine:
         start = datetime.now()
         self.logger.info("=" * 50)
         self.logger.info("Starting IDME login automation")
-        self.logger.info(f"IC: {self.ic_number}")
+        self.logger.info(f"IC: {mask_ic(self.ic_number)}")
         self.logger.info("=" * 50)
 
         try:
