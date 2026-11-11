@@ -666,7 +666,7 @@ class IDMELoginEngine:
 
             if token:
                 self.csrf_token = token
-                self.logger.info(f"CSRF token found: {token[:20]}...")
+                self.logger.info(f"CSRF token found ({len(token)} chars)")
                 return
 
             self.logger.info(f"Token not found, retry {attempt + 1}/5")
