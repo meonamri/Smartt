@@ -14,7 +14,8 @@ operational facts that aren't obvious from the code.
   `meon` — **the directory is still `~/Datang-Reader` although the repo is
   Smartt**. GitHub `meonamri/Smartt` `main` is the source of truth; the host clone
   and CT 105 each sync with GitHub, never with each other.
-- **Before starting**, check read-only that CT 105 has nothing GitHub lacks:
+- **Before starting**, check that CT 105 has nothing GitHub lacks (the fetch only
+  updates meon's remote refs; nothing else is written):
   `pct exec 105 -- su meon -s /bin/bash -c 'cd "/home/meon/Datang-Reader" && git fetch -q && git status -sb -uno'`
   — it must print exactly one line, `## main...origin/main`. If it says ahead or
   diverged, or lists modified tracked files, stop and ask the person to push first.
