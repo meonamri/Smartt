@@ -7,10 +7,6 @@
 # Python files use LF
 *.py text eol=lf
 
-# Windows batch files use CRLF
-*.bat text eol=crlf
-*.cmd text eol=crlf
-
 # Binary files
 *.db binary
 *.sqlite binary

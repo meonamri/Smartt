@@ -86,7 +86,7 @@ fi
 echo
 
 # Derive the tailnet suffix from the machine's DNS name
-# e.g., "raspberrypi.tail1234.ts.net" -> "tail1234.ts.net"
+# e.g., "myhost.tail1234.ts.net" -> "tail1234.ts.net"
 TAILNET_SUFFIX=$(echo "$TS_HOSTNAME" | sed 's/^[^.]*\.//')
 SERVICE_FQDN="${SERVICE_NAME}.${TAILNET_SUFFIX}"
 

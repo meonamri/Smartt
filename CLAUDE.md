@@ -286,19 +286,10 @@ to true.
 
 ## Local test harness (not part of the Docker app)
 
-Windows machine; the IDME test venv is `server/.venv-idme/` (invoke
-`.\.venv-idme\Scripts\python.exe` directly). Read-only drivers and offline
-diagnostics live in `server/` (`test_idme_login.py`, `diag_idme_*.py`) and are
-gitignored along with their PII-bearing dumps. Firefox with HTTP/2 disabled is
-**required** for the Malaysian gov portals — do not remove that from
-`login_engine._initialize_browser`.
-
-## graphify
-
-This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
-
-Rules:
-- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
-- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
-- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
-- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+The IDME test venv is `server/.venv-idme/` (gitignored; none exists on the host
+clone — how agents run the suite there is TBD). `server/test_idme_login.py`
+(tracked) does a **real** portal login, so it is not for agents; the offline
+diagnostics (`diag_idme_attendance.py`, `diag_idme_reasons.py`) and their
+PII-bearing dumps are gitignored.
+Firefox with HTTP/2 disabled is **required** for the Malaysian gov portals — do
+not remove that from `login_engine._initialize_browser`.
