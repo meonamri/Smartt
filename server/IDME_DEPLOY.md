@@ -6,8 +6,8 @@ unchanged; the only new behaviour is MOEIS submission for classes that have a
 configured teacher.
 
 Production runs on CT 105 `schoolapps` (192.168.1.20) as user `meon`: project
-dir `~/Datang-Reader/server`,
-compose project name `server`, host port `8081` (set via `SMARTT_HOST_PORT`).
+dir `~/Datang-Reader/server`, compose project name `server`, host port `8081`
+(set via `SMARTT_HOST_PORT`).
 
 > **Turn-on is gated.** Deploying with `IDME_ENABLED=true` is safe, but leave
 > `IDME_SCHEDULER_CONFIRM=false` (drafts) until the post-deploy checks below
@@ -20,11 +20,11 @@ CT 105, as `meon`: `cd ~/Datang-Reader && git pull`.
 
 ## 2. Secrets — generate the prod Fernet key (do NOT reuse the test key)
 
-Anywhere with `cryptography` (the `smartt` image has it; CT 105's system
-`python3` does not):
+CT 105's system `python3` has no `cryptography`, and the `smartt` image has it
+but not this script, so feed the script in on stdin (from `~/Datang-Reader`):
 
 ```bash
-python3 server/gen_fernet_key.py
+docker exec -i smartt python - < server/gen_fernet_key.py
 ```
 
 Generate it **once**, store it safely. If it changes, already-stored teacher

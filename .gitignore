@@ -195,7 +195,6 @@ cython_debug/
 
 # Claude Code agents
 .claude/
-# CLAUDE.md is tracked on the idme-integration branch (see the file's banner).
 
 # Serena agents
 .serena/

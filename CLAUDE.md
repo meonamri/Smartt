@@ -289,7 +289,6 @@ to true.
 The IDME test venv is `server/.venv-idme/` (gitignored; none exists on the host
 clone — how agents run the suite there is TBD). `server/test_idme_login.py`
 (tracked) does a **real** portal login, so it is not for agents; the offline
-diagnostics (`diag_idme_attendance.py`, `diag_idme_reasons.py`) and their
-PII-bearing dumps are gitignored.
+diagnostics `diag_idme_*.py` and their PII-bearing dumps are gitignored.
 Firefox with HTTP/2 disabled is **required** for the Malaysian gov portals — do
 not remove that from `login_engine._initialize_browser`.
