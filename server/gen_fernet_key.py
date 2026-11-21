@@ -8,7 +8,8 @@ Generate it ONCE and keep it safe:
   - If you change/lose it, already-stored teacher credentials can't be decrypted.
   - Treat it like a password; never commit it to git.
 
-Run anywhere with `cryptography` installed (e.g. on CT 105, from server/):
+Run anywhere with `cryptography` installed (the smartt image has it; CT 105's
+system python3 does not), from server/:
     python3 gen_fernet_key.py
 
 Then copy the printed line into your .env as:

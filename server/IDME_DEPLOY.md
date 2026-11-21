@@ -20,7 +20,8 @@ CT 105, as `meon`: `cd ~/Datang-Reader && git pull`.
 
 ## 2. Secrets — generate the prod Fernet key (do NOT reuse the test key)
 
-On CT 105 (or anywhere with `cryptography`):
+Anywhere with `cryptography` (the `smartt` image has it; CT 105's system
+`python3` does not):
 
 ```bash
 python3 server/gen_fernet_key.py
