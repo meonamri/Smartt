@@ -6,6 +6,30 @@ Split-architecture RFID attendance tracking for the Datang.my API, with an optio
 See `README.md` for the full architecture and API. This file covers the
 operational facts that aren't obvious from the code.
 
+## Agents working from the host clone
+
+- **Where you are:** a clone on the Proxmox host amakma
+  (`/root/homelab-workspace/repos/Smartt`, or a worktree of it). Production runs
+  on CT 105 `schoolapps` (192.168.1.20) from `/home/meon/Datang-Reader`, as user
+  `meon` — **the directory is still `~/Datang-Reader` although the repo is
+  Smartt**. GitHub `meonamri/Smartt` `main` is the source of truth; the host clone
+  and CT 105 each sync with GitHub, never with each other.
+- **Before starting**, check read-only that CT 105 has nothing GitHub lacks:
+  `pct exec 105 -- su meon -s /bin/bash -c 'cd "/home/meon/Datang-Reader" && git fetch -q && git status -sb -uno'`
+  — it must print exactly one line, `## main...origin/main`. If it says ahead or
+  diverged, or lists modified tracked files, stop and ask the person to push first.
+  Run git on CT 105 only as `meon` (root git calls leave root-owned files in `.git`).
+- **Never:** deploy, build or restart containers or services, run `docker`
+  anything, `pct push` or any `pct exec` that writes, edit files on CT 105, or run
+  the app/bot locally with real tokens — Telegram allows one poller per bot token,
+  so a local run kicks the live bot off with a 409. Tests use mocks/fixtures only.
+- **Your job ends at a pull request.** Deploying is the person's step: on CT 105,
+  as `meon`, `git pull`, then rebuild the `smartt` container from `server/`
+  (`docker compose build smartt` — the Dockerfile installs with `-c constraints.txt`
+  — then `docker compose up -d --no-deps smartt`); see `server/IDME_DEPLOY.md`.
+- **Never restart the `smartt` container casually: a restart replays the queued
+  attendance. It is school-critical (MOEIS cutoffs).**
+
 ## Naming: Smartt vs Datang.my
 
 **Smartt** (Smart Attendance Record Tracking Tajuddin) is this school-owned
