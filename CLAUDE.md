@@ -6,6 +6,31 @@ Split-architecture RFID attendance tracking for the Datang.my API, with an optio
 See `README.md` for the full architecture and API. This file covers the
 operational facts that aren't obvious from the code.
 
+## Agents working from the host clone
+
+- **Where you are:** a clone on the Proxmox host amakma
+  (`/root/homelab-workspace/repos/Smartt`, or a worktree of it). Production runs
+  on CT 105 `schoolapps` (192.168.1.20) from `/home/meon/Datang-Reader`, as user
+  `meon` — **the directory is still `~/Datang-Reader` although the repo is
+  Smartt**. GitHub `meonamri/Smartt` `main` is the source of truth; the host clone
+  and CT 105 each sync with GitHub, never with each other.
+- **Before starting**, check that CT 105 has nothing GitHub lacks (the fetch only
+  updates meon's remote refs; nothing else is written):
+  `pct exec 105 -- su meon -s /bin/bash -c 'cd "/home/meon/Datang-Reader" && git fetch -q && git status -sb -uno'`
+  — it must print exactly one line, `## main...origin/main`. If it says ahead or
+  diverged, or lists modified tracked files, stop and ask the person to push first.
+  Run git on CT 105 only as `meon` (root git calls leave root-owned files in `.git`).
+- **Never:** deploy, build or restart containers or services, run `docker`
+  anything, `pct push` or any `pct exec` that writes, edit files on CT 105, or run
+  the app/bot locally with real tokens — Telegram allows one poller per bot token,
+  so a local run kicks the live bot off with a 409. Tests use mocks/fixtures only.
+- **Your job ends at a pull request.** Deploying is the person's step: on CT 105,
+  as `meon`, `git pull`, then rebuild the `smartt` container from `server/`
+  (`docker compose build smartt` — the Dockerfile installs with `-c constraints.txt`
+  — then `docker compose up -d --no-deps smartt`); see `server/IDME_DEPLOY.md`.
+- **Never restart the `smartt` container casually: a restart replays the queued
+  attendance. It is school-critical (MOEIS cutoffs).**
+
 ## Naming: Smartt vs Datang.my
 
 **Smartt** (Smart Attendance Record Tracking Tajuddin) is this school-owned
@@ -261,19 +286,9 @@ to true.
 
 ## Local test harness (not part of the Docker app)
 
-Windows machine; the IDME test venv is `server/.venv-idme/` (invoke
-`.\.venv-idme\Scripts\python.exe` directly). Read-only drivers and offline
-diagnostics live in `server/` (`test_idme_login.py`, `diag_idme_*.py`) and are
-gitignored along with their PII-bearing dumps. Firefox with HTTP/2 disabled is
-**required** for the Malaysian gov portals — do not remove that from
-`login_engine._initialize_browser`.
-
-## graphify
-
-This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
-
-Rules:
-- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
-- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
-- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
-- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+The IDME test venv is `server/.venv-idme/` (gitignored; none exists on the host
+clone — how agents run the suite there is TBD). `server/test_idme_login.py`
+(tracked) does a **real** portal login, so it is not for agents; the offline
+diagnostics `diag_idme_*.py` and their PII-bearing dumps are gitignored.
+Firefox with HTTP/2 disabled is **required** for the Malaysian gov portals — do
+not remove that from `login_engine._initialize_browser`.

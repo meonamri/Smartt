@@ -5,8 +5,9 @@ Turning on the IDME module = an **in-place upgrade** of the existing
 unchanged; the only new behaviour is MOEIS submission for classes that have a
 configured teacher.
 
-Production runs on the Raspberry Pi: project dir `~/Datang-Reader/server`,
-compose project name `server`, host port `8081` (set via `SMARTT_HOST_PORT`).
+Production runs on CT 105 `schoolapps` (192.168.1.20) as user `meon`: project
+dir `~/Datang-Reader/server`, compose project name `server`, host port `8081`
+(set via `SMARTT_HOST_PORT`).
 
 > **Turn-on is gated.** Deploying with `IDME_ENABLED=true` is safe, but leave
 > `IDME_SCHEDULER_CONFIRM=false` (drafts) until the post-deploy checks below
@@ -14,15 +15,16 @@ compose project name `server`, host port `8081` (set via `SMARTT_HOST_PORT`).
 
 ## 1. Code
 
-Merged to `main` (the module is dormant when `IDME_ENABLED=false`). Pull on the
-Pi: `cd ~/Datang-Reader && git pull`.
+Merged to `main` (the module is dormant when `IDME_ENABLED=false`). Pull on
+CT 105, as `meon`: `cd ~/Datang-Reader && git pull`.
 
 ## 2. Secrets — generate the prod Fernet key (do NOT reuse the test key)
 
-On the Pi (or anywhere with `cryptography`):
+CT 105's system `python3` has no `cryptography`, and the `smartt` image has it
+but not this script, so feed the script in on stdin (from `~/Datang-Reader`):
 
 ```bash
-python3 server/gen_fernet_key.py
+docker exec -i smartt python - < server/gen_fernet_key.py
 ```
 
 Generate it **once**, store it safely. If it changes, already-stored teacher
@@ -143,7 +145,8 @@ Only then, per class you trust, set `IDME_SCHEDULER_CONFIRM=true` and
 
 - A confirmed day (TELAH DISAHKAN) locks the form; re-submitting is a no-op.
   Resetting a confirmed record is done in the portal.
-- The throwaway test deployment (compose project `datangtest`, port 8082) is
-  separate. Both prod and test compose dirs are named `server`, so always pass
-  `-p datangtest` for test — a bare `up` in the wrong dir recreates the PROD
-  container.
+- The throwaway test deployment (compose project `datangtest`, port 8082) was
+  separate; there is no test checkout under `/home/meon` on CT 105 (checked
+  2026-11-21). If one is set up again: both prod and test compose dirs are
+  named `server`, so always pass `-p datangtest` for test — a bare `up` in the
+  wrong dir recreates the PROD container.
